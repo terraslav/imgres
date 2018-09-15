@@ -1,0 +1,36 @@
+#!/bin/bash
+# скрипт для серийного ресайза и уменьшения объема фотографий
+
+width=-1
+
+if [ -f ~/.image_resizer ]; then
+	src="$(cat ~/.image_resizer)"
+else
+	src="$(pwd)"
+fi
+echo "src = ${src}"
+
+src="$(zenity --title="Выбор папки" --file-selection --directory --filename="${src}")"
+if [ "${src}_" = "_" ]; then
+	zenity --text="Не выбрана целевая папка!" --title=\"Ошибка\" --no-wrap --info --timeout=5 &
+	exit 0
+fi
+echo "${src}" > ~/.image_resizer
+
+zenity --no-wrap --question --title="Как сохранять файлы?" --text="Сохранить или заменить файлы изображений?"\
+	--cancel-label="Заменить" --ok-label="Сохранить"
+if [ $? = 0 ]; then
+	dist="${src}/res"
+	if [ ! -d "${dist}" ]; then mkdir "${dist}"; fi
+	echo "Сохранить файлы в папке ${dist}"
+else
+	dist="${src}"
+	echo "Заменить файлы в папке ${dist}"
+fi
+
+src="${src}/*.jpg"
+
+mogrify -path "${dist}" -filter Triangle -define filter:support=2 -thumbnail ${width} -unsharp 0.25x0.25+8+0.065\
+	-dither None -posterize 136 -quality 82 -define jpeg:fancy-upsampling=off -define png:compression-filter=5\
+	-define png:compression-level=9 -define png:compression-strategy=1 -define png:exclude-chunk=all -interlace none\
+	-colorspace sRGB -strip "${src}"
